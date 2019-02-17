@@ -41,8 +41,7 @@ impl<'a, T: Clone + for<'de> Deserialize<'de>> ItemsIter<'a, T> {
     }
 
     fn need_next_page(&self) -> bool {
-        self.buffer.is_empty() ||
-            self.cur_idx == self.buffer.len()
+        self.buffer.is_empty() || self.cur_idx == self.buffer.len()
     }
 
     fn fill_next_page(&mut self) -> Option<()> {
@@ -61,7 +60,7 @@ impl<'a, T: Clone + for<'de> Deserialize<'de>> ItemsIter<'a, T> {
     }
 }
 
-impl<'a, T: Clone+ for<'de> Deserialize<'de>> Iterator for ItemsIter<'a, T> {
+impl<'a, T: Clone + for<'de> Deserialize<'de>> Iterator for ItemsIter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -35,25 +35,28 @@
 #![cfg_attr(test, deny(warnings))]
 #![cfg_attr(test, deny(missing_docs))]
 
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate doc_comment;
-#[macro_use] extern crate serde_json as json;
-extern crate hyperx;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate doc_comment;
+#[macro_use]
+extern crate serde_json as json;
 extern crate chrono;
+extern crate hyperx;
 extern crate reqwest;
 extern crate serde;
 extern crate url;
 
 /// Registering your App
 pub mod apps;
-/// Constructing a status
-pub mod status_builder;
 /// Entities returned from the API
 pub mod entities;
-/// Registering your app.
-pub mod registration;
 /// Handling multiple pages of entities.
 pub mod page;
+/// Registering your app.
+pub mod registration;
+/// Constructing a status
+pub mod status_builder;
 
 use std::borrow::Cow;
 use std::error::Error as StdError;
@@ -61,17 +64,17 @@ use std::fmt;
 use std::io::Error as IoError;
 use std::ops;
 
-use json::Error as SerdeError;
-use reqwest::Error as HttpError;
-use reqwest::header::ToStrError as HeaderToStrError;
-use reqwest::{Client, Response, StatusCode};
-use reqwest::header::{self, HeaderMap, HeaderValue};
-use url::ParseError as UrlError;
 use hyperx::Error as HyperxError;
+use json::Error as SerdeError;
+use reqwest::header::ToStrError as HeaderToStrError;
+use reqwest::header::{self, HeaderMap, HeaderValue};
+use reqwest::Error as HttpError;
+use reqwest::{Client, Response, StatusCode};
+use url::ParseError as UrlError;
 
 use entities::prelude::*;
-pub use status_builder::StatusBuilder;
 use page::Page;
+pub use status_builder::StatusBuilder;
 
 pub use registration::Registration;
 /// Convience type over `std::result::Result` with `Error` as the error type.
@@ -247,14 +250,13 @@ macro_rules! paged_routes_with_id {
     () => {}
 }
 
-
 /// Your mastodon application client, handles all requests to and from Mastodon.
 #[derive(Clone, Debug)]
 pub struct Mastodon {
     client: Client,
     headers: HeaderMap,
     /// Raw data about your mastodon instance.
-    pub data: Data
+    pub data: Data,
 }
 
 /// Raw data about mastodon app. Save `Data` using `serde` to prevent needing
@@ -325,18 +327,19 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::Api(ref e) => {
-                e.error_description.as_ref().map(|i| &**i)
-                    .or(e.error.as_ref().map(|i| &**i))
-                    .unwrap_or("Unknown API Error")
-            },
+            Error::Api(ref e) => e
+                .error_description
+                .as_ref()
+                .map(|i| &**i)
+                .or(e.error.as_ref().map(|i| &**i))
+                .unwrap_or("Unknown API Error"),
             Error::Serde(ref e) => e.description(),
             Error::Http(ref e) => e.description(),
             Error::Io(ref e) => e.description(),
             Error::Url(ref e) => e.description(),
             Error::Client(ref status) | Error::Server(ref status) => {
                 status.canonical_reason().unwrap_or("Unknown Status code")
-            },
+            }
             Error::Hyperx(ref e) => e.description(),
             Error::Header(ref e) => e.description(),
             Error::ClientIdRequired => "ClientIdRequired",
@@ -459,34 +462,35 @@ impl<'a> StatusesRequest<'a> {
 }
 
 impl Mastodon {
-    fn from_registration<I>(base: I,
-                         client_id: I,
-                         client_secret: I,
-                         redirect: I,
-                         token: I,
-                         client: Client)
-        -> Self
-        where I: Into<Cow<'static, str>>
-        {
-            let data = Data {
-                base: base.into(),
-                client_id: client_id.into(),
-                client_secret: client_secret.into(),
-                redirect: redirect.into(),
-                token: token.into(),
+    fn from_registration<I>(
+        base: I,
+        client_id: I,
+        client_secret: I,
+        redirect: I,
+        token: I,
+        client: Client,
+    ) -> Self
+    where
+        I: Into<Cow<'static, str>>,
+    {
+        let data = Data {
+            base: base.into(),
+            client_id: client_id.into(),
+            client_secret: client_secret.into(),
+            redirect: redirect.into(),
+            token: token.into(),
+        };
 
-            };
+        let mut headers = HeaderMap::new();
+        let auth = HeaderValue::from_str(&format!("Bearer {}", data.token));
+        headers.insert(header::AUTHORIZATION, auth.unwrap());
 
-            let mut headers = HeaderMap::new();
-            let auth = HeaderValue::from_str(&format!("Bearer {}", data.token));
-            headers.insert(header::AUTHORIZATION, auth.unwrap());
-
-            Mastodon {
-                client: client,
-                headers: headers,
-                data: data,
-            }
+        Mastodon {
+            client: client,
+            headers: headers,
+            data: data,
         }
+    }
 
     /// Creates a mastodon instance from the data struct.
     pub fn from_data(data: Data) -> Self {
@@ -553,12 +557,11 @@ impl Mastodon {
         (delete) delete_status: "statuses/{}" => Empty,
     }
 
-    pub fn update_credentials(&self, changes: CredientialsBuilder)
-        -> Result<Account>
-    {
-
+    pub fn update_credentials(&self, changes: CredientialsBuilder) -> Result<Account> {
         let url = self.route("/api/v1/accounts/update_credentials");
-        let response = self.client.patch(&url)
+        let response = self
+            .client
+            .patch(&url)
             .headers(self.headers.clone())
             .multipart(changes.into_form()?)
             .send()?;
@@ -576,8 +579,9 @@ impl Mastodon {
 
     /// Post a new status to the account.
     pub fn new_status(&self, status: StatusBuilder) -> Result<Status> {
-
-        let response = self.client.post(&self.route("/api/v1/statuses"))
+        let response = self
+            .client
+            .post(&self.route("/api/v1/statuses"))
             .headers(self.headers.clone())
             .json(&status)
             .send()?;
@@ -652,7 +656,8 @@ impl Mastodon {
     /// # }
     /// ```
     pub fn statuses<'a, S>(&self, id: &str, request: S) -> Result<Page<Status>>
-            where S: Into<Option<StatusesRequest<'a>>>
+    where
+        S: Into<Option<StatusesRequest<'a>>>,
     {
         let mut url = format!("{}/api/v1/accounts/{}/statuses", self.base, id);
 
@@ -660,9 +665,7 @@ impl Mastodon {
             url = format!("{}{}", url, request.to_querystring());
         }
 
-        let response = self.client.get(&url)
-            .headers(self.headers.clone())
-            .send()?;
+        let response = self.client.get(&url).headers(self.headers.clone()).send()?;
 
         Page::new(self, response)
     }
@@ -684,9 +687,7 @@ impl Mastodon {
             url.pop();
         }
 
-        let response = self.client.get(&url)
-            .headers(self.headers.clone())
-            .send()?;
+        let response = self.client.get(&url).headers(self.headers.clone()).send()?;
 
         Page::new(self, response)
     }
@@ -694,21 +695,21 @@ impl Mastodon {
     /// Search for accounts by their name.
     /// Will lookup an account remotely if the search term is in the
     /// `username@domain` format and not yet in the database.
-    pub fn search_accounts(&self,
-                           query: &str,
-                           limit: Option<u64>,
-                           following: bool)
-        -> Result<Page<Account>>
-    {
-        let url = format!("{}/api/v1/accounts/search?q={}&limit={}&following={}",
-                          self.base,
-                          query,
-                          limit.unwrap_or(40),
-                          following);
+    pub fn search_accounts(
+        &self,
+        query: &str,
+        limit: Option<u64>,
+        following: bool,
+    ) -> Result<Page<Account>> {
+        let url = format!(
+            "{}/api/v1/accounts/search?q={}&limit={}&following={}",
+            self.base,
+            query,
+            limit.unwrap_or(40),
+            following
+        );
 
-        let response = self.client.get(&url)
-            .headers(self.headers.clone())
-            .send()?;
+        let response = self.client.get(&url).headers(self.headers.clone()).send()?;
 
         Page::new(self, response)
     }
@@ -752,9 +753,7 @@ from! {
 
 // Convert the HTTP response body from JSON. Pass up deserialization errors
 // transparently.
-fn deserialise<T: for<'de> serde::Deserialize<'de>>(mut response: Response)
-    -> Result<T>
-{
+fn deserialise<T: for<'de> serde::Deserialize<'de>>(mut response: Response) -> Result<T> {
     use std::io::Read;
 
     let mut vec = Vec::new();
@@ -769,6 +768,6 @@ fn deserialise<T: for<'de> serde::Deserialize<'de>>(mut response: Response)
                 return Err(Error::Api(error));
             }
             Err(e.into())
-        },
+        }
     }
 }

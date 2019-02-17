@@ -2,8 +2,8 @@
 
 use chrono::prelude::*;
 use reqwest::multipart::Form;
-use ::Result;
 use std::path::Path;
+use Result;
 
 /// A struct representing an Account.
 #[derive(Debug, Clone, Deserialize)]
